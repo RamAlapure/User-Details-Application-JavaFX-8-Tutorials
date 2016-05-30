@@ -3,7 +3,7 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package tutorial14;
+package org.ramalapure.userinfoapp;
 
 
 import java.awt.Desktop;
@@ -14,6 +14,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.util.Arrays;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -64,12 +65,16 @@ import javafx.scene.text.Font;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.xssf.usermodel.XSSFRow;
+import org.apache.poi.xssf.usermodel.XSSFSheet;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**
  *
- * @author Ram
+ * @author Ram Alapure
  */
-public class Tutorial14 extends Application {
+public class UserInfoApp extends Application {
     Connection conn;
     PreparedStatement pst = null;
     ResultSet rs = null;
@@ -96,6 +101,7 @@ public class Tutorial14 extends Application {
     private Image image;
     
     private FileInputStream fis;
+    private Button exportToXL, importXLToDB;
     
     @Override
     public void start(Stage primaryStage) { 
@@ -103,8 +109,10 @@ public class Tutorial14 extends Application {
         fillComboBox();
         // create transperant stage
         //primaryStage.initStyle(StageStyle.TRANSPARENT);
-        primaryStage.setTitle("JavaFX 8 Tutorial 50 - Retrive Image from Database ");
         
+        primaryStage.setTitle("JavaFX 8 Tutorial 61 - Retrive Database Values Into CheckBox");
+        
+        primaryStage.getIcons().add(new Image("file:user-icon.png"));
         BorderPane layout = new BorderPane();
         Scene newscene = new Scene(layout, 1200, 700, Color.rgb(0, 0, 0, 0));
         
@@ -166,7 +174,7 @@ public class Tutorial14 extends Application {
                 System.err.println(e1);
             } 
             }
-        });
+        });        
         
         Button btn = new Button("Login");
         btn.setFont(Font.font("SanSerif", 15));
@@ -195,6 +203,9 @@ public class Tutorial14 extends Application {
             }
         });
         
+        vbox.getChildren().addAll(label, username, password, btn);
+        root.getChildren().addAll(background, vbox);
+        
         Button logout = new Button("Logout");
         logout.setFont(Font.font("SanSerif", 15));
         logout.setOnAction(e ->{
@@ -204,10 +215,7 @@ public class Tutorial14 extends Application {
         
         layout.setTop(logout);
         BorderPane.setAlignment(logout, Pos.TOP_RIGHT);
-        BorderPane.setMargin(logout, new Insets(10));
-        
-        vbox.getChildren().addAll(label, username, password, btn);
-        root.getChildren().addAll(background, vbox);
+        BorderPane.setMargin(logout, new Insets(10));        
         
         VBox fields = new VBox(5);
         searchField = new TextField();
@@ -366,7 +374,7 @@ public class Tutorial14 extends Application {
                 
                 pst.close();
                 clearFields();
-            }catch(Exception e1){
+            }catch(SQLException | FileNotFoundException e1){
                 label.setText("SQL Error");
                 System.err.println(e1);
             }
@@ -407,7 +415,7 @@ public class Tutorial14 extends Application {
                 
                 pst.close();
                 clearFields();
-            }catch(Exception e1){
+            }catch(SQLException | FileNotFoundException e1){
                 label.setText("SQL Error");
                 System.err.println(e1);
             }
@@ -424,7 +432,7 @@ public class Tutorial14 extends Application {
         table = new TableView<>();
         
         TableColumn column1 = new TableColumn("ID");
-        column1.setMaxWidth(30);
+        column1.setMaxWidth(50);
         column1.setCellValueFactory(new PropertyValueFactory<>("ID"));
         
         TableColumn column2 = new TableColumn("First Name");
@@ -519,7 +527,7 @@ public class Tutorial14 extends Application {
                 pst.close();
                 rs.close();
             } catch (SQLException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
             }
             
         });
@@ -542,7 +550,7 @@ public class Tutorial14 extends Application {
 
                         pst.close();
                     } catch (SQLException ex) {
-                        Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                        Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
                     }
                 }
             
@@ -551,8 +559,103 @@ public class Tutorial14 extends Application {
             refreshTable();
             
         });
+        
+        exportToXL = new Button("Export To Excel");
+        exportToXL.setFont(Font.font("Sanserif", 15));
+        exportToXL.setOnAction(e->{
+            try {
+                String query = "Select * from UserDatabase";
+                pst = conn.prepareStatement(query);
+                rs = pst.executeQuery();
+                
+                //Apache POI Jar Link-
+                //http://a.mbbsindia.com/poi/release/bin/poi-bin-3.13-20150929.zip
+                XSSFWorkbook wb = new XSSFWorkbook();//for earlier version use HSSF
+                XSSFSheet sheet = wb.createSheet("User Details");
+                XSSFRow header = sheet.createRow(0);
+                header.createCell(0).setCellValue("ID");
+                header.createCell(1).setCellValue("First Name");
+                header.createCell(2).setCellValue("Last Name");
+                header.createCell(3).setCellValue("Email");
+                
+                sheet.autoSizeColumn(1);
+                sheet.autoSizeColumn(2);
+                sheet.setColumnWidth(3, 256*25);//256-character width
+                
+                sheet.setZoom(150);//scale-150% 
+                
+                
+                int index = 1;
+                while(rs.next()){
+                    XSSFRow row = sheet.createRow(index);
+                    row.createCell(0).setCellValue(rs.getString("ID"));
+                    row.createCell(1).setCellValue(rs.getString("FirstName"));
+                    row.createCell(2).setCellValue(rs.getString("LastName"));
+                    row.createCell(3).setCellValue(rs.getString("Email"));
+                    index++;                    
+                }
+                
+                FileOutputStream fileOut = new FileOutputStream("UserDetails.xlsx");// befor 2007 version xls
+                wb.write(fileOut);
+                fileOut.close();
+                
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("User Details Exported in Excel Sheet.");
+                alert.showAndWait();
+                
+                pst.close();
+                rs.close();
+                
+            } catch (SQLException | FileNotFoundException ex) {
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            
+        });
+        
+        importXLToDB = new Button("Import XL TO DB");
+        importXLToDB.setFont(Font.font("Sanserif", 15));
+        importXLToDB.setOnAction(e -> {
+            try {
+                String query = "Insert into UserDatabase(ID, FirstName, LastName, Email) values (?,?,?,?)";
+                pst = conn.prepareStatement(query);
+                
+                FileInputStream fileIn = new FileInputStream(new File("UserInfo.xlsx"));
+                
+                XSSFWorkbook wb = new XSSFWorkbook(fileIn);
+                XSSFSheet sheet = wb.getSheetAt(0);
+                Row row;
+                for(int i=1; i<=sheet.getLastRowNum(); i++){
+                    row = sheet.getRow(i);
+                    pst.setInt(1, (int) row.getCell(0).getNumericCellValue());
+                    pst.setString(2, row.getCell(1).getStringCellValue());
+                    pst.setString(3, row.getCell(2).getStringCellValue());
+                    pst.setString(4, row.getCell(3).getStringCellValue());
+                    pst.execute();
+                }
+                Alert alert = new Alert(AlertType.INFORMATION);
+                alert.setTitle("Information Dialog");
+                alert.setHeaderText(null);
+                alert.setContentText("User Details Imported From Excel Sheet To Database.");
+                alert.showAndWait();
+                
+                wb.close();
+                fileIn.close();
+                pst.close();
+                rs.close();
+            } catch (SQLException | FileNotFoundException ex) {
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (IOException ex) {
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            refreshTable();
+        });
+        
         HBox hbox = new HBox(5);
-        hbox.getChildren().addAll(load, delete,update, comboBox);
+        hbox.getChildren().addAll(load, delete,update, comboBox, exportToXL, importXLToDB);
         
         layout.setBottom(hbox);
         BorderPane.setMargin(hbox, new Insets(10,0,10,10));
@@ -562,46 +665,6 @@ public class Tutorial14 extends Application {
         //layout.setLeft(list);
         //BorderPane.setMargin(list, new Insets(10));
         
-        list.setOnMouseClicked(e ->{
-            try {
-                String query = "select * from UserDatabase where FirstName = ?";
-                pst = conn.prepareStatement(query);
-                pst.setString(1, (String)list.getSelectionModel().getSelectedItem());
-                rs = pst.executeQuery();
-                
-                while(rs.next()){
-                    id.setText(rs.getString("ID"));
-                    fn.setText(rs.getString("FirstName"));
-                    ln.setText(rs.getString("LastName"));
-                    em.setText(rs.getString("Email"));
-                    mobile.setText(rs.getString("MobileNo"));
-                    un.setText(rs.getString("Username"));
-                    pw.setText(rs.getString("Password"));
-                    ((TextField)date.getEditor()).setText(rs.getString("DOB"));
-                    
-                    if(null != rs.getString("Gender"))switch (rs.getString("Gender")) {
-                        case "Male":
-                            male.setSelected(true);
-                            break;
-                        case "Female":
-                            female.setSelected(true);
-                            break;
-                        default:
-                            male.setSelected(false);
-                            female.setSelected(false);
-                            break;
-                    }else{
-                        male.setSelected(false);
-                        female.setSelected(false);
-                    }
-                    
-                }
-                pst.close();
-                rs.close();
-            } catch (SQLException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
-            }
-        });
         
         table.setOnMouseClicked(e ->{
             try {
@@ -638,6 +701,42 @@ public class Tutorial14 extends Application {
                         female.setSelected(false);
                     }
                     
+                    // Retrive Hobbies Into CheckBox
+                    
+                    if(rs.getString("Hobbies")!= null){
+                        checkBox1.setSelected(false);
+                        checkBox2.setSelected(false);
+                        checkBox3.setSelected(false);
+                        
+                        //hobbies in the string formate - [Playing , Dancing]
+                        System.out.println(rs.getString("Hobbies"));
+                        
+                        String checkBoxString = rs.getString("Hobbies").replace("[", "").replace("]", "");
+                        System.out.println(checkBoxString);
+                        
+                        //now can converert to a list, strip out commas and spaces
+                        List<String> hobbylist = Arrays.asList(checkBoxString.split("\\s*,\\s*"));
+                        System.out.println(hobbylist);
+                        
+                        for(String hobby : hobbylist){ 
+                            switch(hobby){
+                                case "Playing" : checkBox1.setSelected(true);
+                                                 break;
+                                case "Singing" : checkBox2.setSelected(true);
+                                                 break;
+                                case "Dancing" : checkBox3.setSelected(true);
+                                                 break;
+                                default        : checkBox1.setSelected(false);
+                                                 checkBox2.setSelected(false);
+                                                 checkBox3.setSelected(false);
+                            }
+                        }                    
+                    }else{
+                        checkBox1.setSelected(false);
+                        checkBox2.setSelected(false);
+                        checkBox3.setSelected(false);
+                    }
+                    
                     InputStream is = rs.getBinaryStream("Image");
                     OutputStream os = new FileOutputStream( new File("photo.jpg"));
                     byte[] content = new byte[1024];
@@ -660,11 +759,11 @@ public class Tutorial14 extends Application {
                 pst.close();
                 rs.close();
             } catch (SQLException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
             } catch (FileNotFoundException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
             }
         });
         table.setOnKeyReleased(e ->{
@@ -702,6 +801,29 @@ public class Tutorial14 extends Application {
                         male.setSelected(false);
                         female.setSelected(false);
                     }
+                    
+                    if(rs.getString("Hobbies")!= null){
+                        //If brackets are not removed, any attempt to convert to an array or list, just adds an additional set of brackets
+                        String checkBoxString = rs.getString("Hobbies").replace("[", "").replace("]", "");
+                        
+                        //now can converert to a list, strip out commas and spaces
+                        List<String> hobbylist = Arrays.asList(checkBoxString.split("\\s*,\\s*"));
+                        for(String hobby : hobbylist){ 
+                            switch(hobby){
+                                case "Playing" : checkBox1.setSelected(true);
+                                                 break;
+                                case "Singing" : checkBox2.setSelected(true);
+                                                 break;
+                                case "Dancing" : checkBox3.setSelected(true);
+                                                 break;
+                                default        : checkBox1.setSelected(false);
+                                                 checkBox2.setSelected(false);
+                                                 checkBox3.setSelected(false);
+                            }
+                        }                    
+                        
+                    }
+                    
                     InputStream is = rs.getBinaryStream("Image");
                     OutputStream os = new FileOutputStream( new File("photo.jpg"));
                     byte[] content = new byte[1024];
@@ -724,14 +846,15 @@ public class Tutorial14 extends Application {
                 pst.close();
                 rs.close();
             } catch (SQLException ex) {
-                Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
             }   catch (FileNotFoundException ex) {
-                    Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
                 } catch (IOException ex) {
-                    Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+                    Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
                 }
             }
         });
+        
         FilteredList<User> filteredData = new FilteredList<>(data, e -> true);
         searchField.setOnKeyReleased(e ->{
             searchField.textProperty().addListener((observableValue, oldValue, newValue) ->{
@@ -937,7 +1060,7 @@ public class Tutorial14 extends Application {
             pst.close();
             rs.close();
         } catch (SQLException ex) {
-            Logger.getLogger(Tutorial14.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(UserInfoApp.class.getName()).log(Level.SEVERE, null, ex);
         }        
     }
     
