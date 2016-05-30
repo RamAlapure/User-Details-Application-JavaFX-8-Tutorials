@@ -802,12 +802,23 @@ public class UserInfoApp extends Application {
                         female.setSelected(false);
                     }
                     
+                     // Retrive Hobbies Into CheckBox
+                    
                     if(rs.getString("Hobbies")!= null){
-                        //If brackets are not removed, any attempt to convert to an array or list, just adds an additional set of brackets
+                        checkBox1.setSelected(false);
+                        checkBox2.setSelected(false);
+                        checkBox3.setSelected(false);
+                        
+                        //hobbies in the string formate - [Playing , Dancing]
+                        System.out.println(rs.getString("Hobbies"));
+                        
                         String checkBoxString = rs.getString("Hobbies").replace("[", "").replace("]", "");
+                        System.out.println(checkBoxString);
                         
                         //now can converert to a list, strip out commas and spaces
                         List<String> hobbylist = Arrays.asList(checkBoxString.split("\\s*,\\s*"));
+                        System.out.println(hobbylist);
+                        
                         for(String hobby : hobbylist){ 
                             switch(hobby){
                                 case "Playing" : checkBox1.setSelected(true);
@@ -821,7 +832,10 @@ public class UserInfoApp extends Application {
                                                  checkBox3.setSelected(false);
                             }
                         }                    
-                        
+                    }else{
+                        checkBox1.setSelected(false);
+                        checkBox2.setSelected(false);
+                        checkBox3.setSelected(false);
                     }
                     
                     InputStream is = rs.getBinaryStream("Image");
